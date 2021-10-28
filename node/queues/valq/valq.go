@@ -11,7 +11,7 @@ type ValQueue struct {
 	FirstLink *LinkNode
 	Parent    *ValQueue
 	Count     int
-	isLeaf    bool
+	IsLeaf    bool
 }
 
 type ValNode struct {
@@ -25,12 +25,30 @@ type LinkNode struct {
 }
 
 func (l *LinkNode) Append(link *ValQueue) {
-	fmt.Println(l)
 	newNode := LinkNode{
 		Link: link,
 		Next: l.Next,
 	}
 	l.Next = &newNode
+}
+
+func (v *ValQueue) LeftToRight() {
+	cur := v.FirstLink
+	val := v.FirstVal
+	if cur != nil {
+		for cur.Next != nil {
+			cur.Link.LeftToRight()
+			fmt.Println(val.Val)
+			cur = cur.Next
+			val = val.Next
+		}
+		cur.Link.LeftToRight()
+	} else {
+		for val != nil {
+			fmt.Println(val.Val)
+			val = val.Next
+		}
+	}
 }
 
 func GenValQ(value int) *ValQueue {
@@ -39,36 +57,37 @@ func GenValQ(value int) *ValQueue {
 			Val:  value,
 			Next: nil,
 		},
-		isLeaf: true,
+		IsLeaf: true,
 		Count:  1,
 	}
 }
 
 func (v *ValQueue) InsertLink(id int, value int, link *ValQueue) {
 	cur := v.FirstLink
-	if v.FirstVal.Val > value {
-		newNode := ValNode{
-			Val:  value,
-			Next: v.FirstVal,
+	for i := 0; i < id; i++ {
+		cur = cur.Next
+	}
+	cur.Append(link)
+	/*cur := v.FirstLink
+	if v.FirstLink.Link.FirstVal.Val >= value {
+		newNode := LinkNode{
+			Link: link,
+			Next: v.FirstLink,
 		}
-		v.FirstVal = &newNode
+		v.FirstLink = &newNode
 		return
 	}
 	for i := 0; i < id; i++ {
 		cur = cur.Next
 	}
-	if cur.Link != nil {
-		if cur.Link.FirstVal.Val > value {
+	if cur.Next != nil {
+		if cur.Next.Link.FirstVal.Val >= value {
 			cur.Append(link)
+			return
 		}
 	}
-	cur.Next.Append(link)
+	cur.Append(link)*/
 }
-
-/*func (v *ValQueue) Raise() {
-	median, left, right := v.GetMedian()
-
-}*/
 
 func (v *ValQueue) GetRoot() *ValQueue {
 	cur := v
@@ -80,44 +99,104 @@ func (v *ValQueue) GetRoot() *ValQueue {
 
 func (v *ValQueue) Subdivide() {
 	if v.Count > max {
-		fmt.Println("Subdividing... , count:", v.Count)
-		median, left, right := v.GetMedian()
+		//fmt.Println("Subdividing... , count:", v.Count)
+		median, left, right, leftLink, rightLink := v.GetMedian()
 		if v.Parent == nil {
 			v.Parent = &ValQueue{
 				FirstVal: median,
 				FirstLink: &LinkNode{
 					Link: &ValQueue{
 						FirstVal:  left,
-						FirstLink: nil,
+						FirstLink: leftLink,
 						Count:     max / 2,
-						isLeaf:    true,
+						IsLeaf:    leftLink == nil,
 					},
 					Next: &LinkNode{
 						Link: &ValQueue{
 							FirstVal:  right,
-							FirstLink: nil,
+							FirstLink: rightLink,
 							Count:     max / 2,
-							isLeaf:    true,
+							IsLeaf:    rightLink == nil,
 						},
 						Next: nil,
 					},
 				},
 				Parent: nil,
 				Count:  1,
-				isLeaf: false,
+				IsLeaf: false,
 			}
-			v.Parent.FirstLink.Link.Parent = v.Parent
-			v.Parent.FirstLink.Next.Link.Parent = v.Parent
+			v.Count = 1
+			//parenting
+			//parenting
+			//parenting
+			//parenting
+			//parenting
+			//parenting
+			//parenting
+			//cur := v.Parent.FirstLink.Next.Link
+			/*if cur.FirstLink != nil {
+				cur.FirstLink.Link.Parent = cur
+				cur.FirstLink.Next.Link.Parent = cur
+			}*/
+			/*v.Parent.FirstLink.Link.Parent = v.Parent
+			v.Parent.FirstLink.Next.Link.Parent = v.Parent*/
+
+			v.Parent.ReParent()
+			if Debug {
+				t := v.GetRoot()
+				fmt.Println(t)
+			}
+			curRepair := v.Parent.FirstLink
+			if !v.IsLeaf {
+				for curRepair != nil {
+					curRepair.Link.ReParent()
+					curRepair = curRepair.Next
+				}
+			}
+			/*if !v.IsLeaf {
+				v.Parent.FirstLink.Link.ReParent()
+				v.Parent.FirstLink.Next.Link.ReParent()
+			}*/
+			if Debug {
+				t := v.GetRoot()
+				fmt.Println(t)
+			}
 		} else {
-			id := v.Parent.InsertVal(median.Val, false)
-			v.Parent.InsertLink(id, median.Val, v)
+			id, _ := v.Parent.InsertVal(median.Val, false)
+			v.Parent.IsLeaf = false
+			v.Count = 1
+			v.Parent.InsertLink(id, median.Val, &ValQueue{
+				FirstVal:  right,
+				FirstLink: rightLink,
+				Parent:    v.Parent,
+				Count:     max / 2,
+				IsLeaf:    rightLink == nil,
+			})
+
+			v.Parent.ReParent()
+			curRepair := v.Parent.FirstLink
+			if !v.IsLeaf {
+				for curRepair != nil {
+					curRepair.Link.ReParent()
+					curRepair = curRepair.Next
+				}
+			}
+			v.Parent.Subdivide()
 		}
 	} else {
-		fmt.Println("No need to subdivide, count:", v.Count)
+		//fmt.Println("No need to subdivide, count:", v.Count)
 	}
 }
 
-func (v *ValQueue) GetMedian() (*ValNode, *ValNode, *ValNode) {
+func (v *ValQueue) ReParent() {
+	cur := v.FirstLink
+	for cur != nil {
+		cur.Link.Parent = v
+		cur = cur.Next
+	}
+}
+
+func (v *ValQueue) GetMedian() (*ValNode, *ValNode, *ValNode, *LinkNode, *LinkNode) {
 	cur := v.FirstVal
 	leftQVal := v.FirstVal
 	for i := 0; i < v.Count/2-1; i++ {
@@ -127,35 +206,48 @@ func (v *ValQueue) GetMedian() (*ValNode, *ValNode, *ValNode) {
 	cur.Next = nil
 	rightQVal := median.Next
 	median.Next = nil
-	return median, leftQVal, rightQVal
+	v.IsLeaf = v.FirstLink == nil
+	if v.IsLeaf {
+		return median, leftQVal, rightQVal, nil, nil
+	} else {
+		leftLink := v.FirstLink
+		curL := v.FirstLink
+		for i := 0; i < v.Count/2; i++ {
+			curL = curL.Next
+		}
+
+		newCur := curL.Next
+		curL.Next = nil
+		rightLink := newCur
+		return median, leftQVal, rightQVal, leftLink, rightLink
+	}
 }
 
 /*func (v *ValQueue) InsertLink() {
 
 }*/
 
-func (v *ValQueue) InsertVal(value int, isGoingDown bool) int {
-	if v.isLeaf || !isGoingDown {
+func (v *ValQueue) InsertVal(value int, isGoingDown bool) (int, *ValQueue) {
+	if v.IsLeaf || !isGoingDown {
 		v.Count++
 		i := 0
 		cur := v.FirstVal
-		if cur.Val > value {
+		if cur.Val >= value {
 			newNode := ValNode{
 				Val:  value,
 				Next: v.FirstVal,
 			}
 			v.FirstVal = &newNode
-			v.Subdivide()
-			return i
+			return i, v
 		}
+		i++
 		for cur.Next != nil {
-			if cur.Next.Val > value {
+			if cur.Next.Val >= value {
 				cur.Next = &ValNode{
 					Val:  value,
 					Next: cur.Next,
 				}
-				v.Subdivide()
-				return i
+				return i, v
 			}
 			i++
 			cur = cur.Next
@@ -165,23 +257,26 @@ func (v *ValQueue) InsertVal(value int, isGoingDown bool) int {
 			Val:  value,
 			Next: nil,
 		}
-		i++
-		v.Subdivide()
-		return i
+		//v.Subdivide()
+		return i, v
 	} else {
 		curVal := v.FirstVal
 		curLink := v.FirstLink
 		for curVal.Next != nil {
-			if curVal.Val > value {
+			if curVal.Val >= value {
 				return curLink.Link.InsertVal(value, isGoingDown)
 			}
 			curVal = curVal.Next
 			curLink = curLink.Next
 		}
-		if curVal.Val > value {
+		if curVal.Val >= value {
 			return curLink.Link.InsertVal(value, isGoingDown)
 		}
 		curLink = curLink.Next
+		/*if curLink == nil {
+			t := v.GetRoot()
+			fmt.Println(t)
+		}*/
 		return curLink.Link.InsertVal(value, isGoingDown)
 	}
 }

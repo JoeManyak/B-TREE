@@ -1,18 +1,23 @@
 package tree
 
-import "main/node/queues/valq"
+import (
+	"fmt"
+	"main/node/queues/valq"
+)
 
 type Tree struct {
 	Val *valq.ValQueue
 }
 
 func GetTree(value int) Tree {
-	gen := valq.GenValQ(5)
+	gen := valq.GenValQ(value)
 	newTree := Tree{gen}
 	return newTree
 }
 
 func (t *Tree) Add(val int) {
-	t.Val.InsertVal(val, true)
+	fmt.Println("adding", val)
+	_, link := t.Val.InsertVal(val, true)
+	link.Subdivide()
 	t.Val = t.Val.GetRoot()
 }
