@@ -21,3 +21,17 @@ func (t *Tree) Add(val int) {
 	link.Subdivide()
 	t.Val = t.Val.GetRoot()
 }
+
+func (t *Tree) Search(val int) *valq.ValQueue {
+	v, _ := t.Val.Search(val)
+	return v
+}
+
+func (t *Tree) Delete(val int) {
+	search, id := t.Val.Search(val)
+	if search != nil {
+		search.DeleteAndBalance(id)
+	} else {
+		fmt.Println("Not found :", val)
+	}
+}

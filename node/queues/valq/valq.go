@@ -273,10 +273,212 @@ func (v *ValQueue) InsertVal(value int, isGoingDown bool) (int, *ValQueue) {
 			return curLink.Link.InsertVal(value, isGoingDown)
 		}
 		curLink = curLink.Next
-		/*if curLink == nil {
-			t := v.GetRoot()
-			fmt.Println(t)
-		}*/
 		return curLink.Link.InsertVal(value, isGoingDown)
 	}
+}
+
+//:=:=:=:=:=:=:=:=:=: DELETIONS :=:=:=:=:=:=:=:=:=:\\
+
+func (v *ValQueue) Search(value int) (*ValQueue, int) {
+	cur := v.FirstVal
+	curL := v.FirstLink
+	var i int
+	for i = 0; cur != nil; i++ {
+		if !v.IsLeaf {
+			if value <= cur.Val {
+				val, count := curL.Link.Search(value)
+				if val != nil {
+					return val, count
+				}
+			}
+		}
+		if cur.Val == value {
+			return v, i
+		}
+		cur = cur.Next
+		if !v.IsLeaf {
+			curL = curL.Next
+		}
+	}
+	if !v.IsLeaf {
+		val, count := curL.Link.Search(value)
+		if val != nil {
+			return val, count
+		}
+	}
+	return nil, 0
+}
+
+func (v *ValQueue) DeleteLink(id int) {
+	if id == 0 {
+		v.FirstLink = v.FirstLink.Next
+	} else {
+		cur := v.FirstLink
+		for i := 0; i < id-1; i++ {
+			cur = cur.Next
+		}
+		cur.Next = cur.Next.Next
+	}
+}
+
+func (v *ValQueue) DeleteVal(id int) {
+	if id == 0 {
+		v.FirstVal = v.FirstVal.Next
+	} else {
+		cur := v.FirstVal
+		for i := 0; i < id-1; i++ {
+			cur = cur.Next
+		}
+		cur.Next = cur.Next.Next
+	}
+	v.Count--
+}
+
+func (v *ValQueue) DeleteAndBalance(id int) {
+	v.DeleteVal(id)
+	if v.IsLeaf {
+		if v.FirstVal != nil {
+			return
+		}
+		selfId := v.GetSelfLinkId()
+		left, right := v.GetNeighbours()
+		if left != nil {
+			if left.Count > 1 {
+				fromParent := v.Parent.Get(selfId - 1)
+				biggest := left.GetBiggest()
+				v.InsertVal(fromParent.Val, false)
+				v.Parent.InsertVal(biggest, false)
+				return
+			}
+		}
+		if right != nil {
+			if right.Count > 1 {
+				fromParent := v.Parent.Get(selfId)
+				smallest := right.GetSmallest()
+				v.InsertVal(fromParent.Val, false)
+				v.Parent.InsertVal(smallest, false)
+				return
+			}
+		}
+		if left != nil {
+			fromParent := v.Parent.Get(selfId - 1)
+			left.InsertVal(fromParent.Val, true)
+			v.Parent.DeleteLink(selfId)
+			return
+		}
+		if right != nil {
+			fromParent := v.Parent.Get(selfId)
+			right.InsertVal(fromParent.Val, true)
+			v.Parent.DeleteLink(selfId)
+			return
+		}
+	} else {
+		if v.FirstVal != nil {
+			cur := v.FirstLink
+			for i := 0; i < id; i++ {
+				cur = cur.Next
+			}
+			if cur.Link.Count > 1 {
+				val := cur.Link.GetBiggest()
+				v.InsertVal(val, false)
+				return
+			}
+			cur = cur.Next
+			if cur.Link.Count > 1 {
+				val := cur.Link.GetSmallest()
+				v.InsertVal(val, false)
+				return
+			}
+			value := cur.Link.Get(0)
+			v.InsertVal(value.Val, true)
+			v.DeleteLink(id + 1)
+		} else {
+			selfId := v.GetSelfLinkId()
+			left, right := v.GetNeighbours()
+			if left != nil {
+				if left.Count > 1 {
+					fromParent := v.Parent.Get(selfId - 1)
+					biggest := left.GetBiggest()
+					v.InsertVal(fromParent.Val, false)
+					v.Parent.InsertVal(biggest, false)
+					return
+				}
+			}
+			if right != nil {
+				if right.Count > 1 {
+					fromParent := v.Parent.Get(selfId)
+					smallest := right.GetSmallest()
+					v.InsertVal(fromParent.Val, false)
+					v.Parent.InsertVal(smallest, false)
+					return
+				}
+			}
+		}
+	}
+}
+
+func (v *ValQueue) GetSelfLinkId() int {
+	if v.Parent != nil {
+		cur := v.Parent.FirstLink
+		for i := 0; i < v.Parent.Count+1; i++ {
+			if cur.Link == v {
+				fmt.Println("")
+				return i
+			}
+			cur = cur.Next
+		}
+	}
+	return 0
+}
+
+func (v *ValQueue) Get(id int) *ValNode {
+	cur := v.FirstVal
+	for i := 0; i < id; i++ {
+		cur = cur.Next
+	}
+	v.DeleteVal(id)
+	return cur
+}
+
+func (v *ValQueue) GetSmallest() int {
+	smallest := v.FirstVal.Val
+	v.DeleteVal(0)
+	return smallest
+}
+
+func (v *ValQueue) GetBiggest() int {
+	cur := v.FirstVal
+	for cur.Next != nil {
+		cur = cur.Next
+	}
+	biggest := cur.Val
+	v.DeleteVal(v.Count - 1)
+	return biggest
+}
+
+func (v *ValQueue) GetNeighbours() (*ValQueue, *ValQueue) {
+	if v.Parent == nil {
+		return nil, nil
+	}
+	var i int
+	cur := v.Parent.FirstLink
+	for i = 0; cur != nil; i++ {
+		if cur.Link == v {
+			break
+		}
+		cur = cur.Next
+	}
+	var left, right *ValQueue
+	cur = v.Parent.FirstLink
+	for j := 0; cur != nil; j++ {
+		if j == i-1 {
+			left = cur.Link
+		}
+		if j == i+1 {
+			right = cur.Link
+			return left, right
+		}
+		cur = cur.Next
+	}
+	return left, right
 }
