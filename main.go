@@ -7,7 +7,7 @@ import (
 
 func main() {
 	t := tree.GetTree(1)
-	for i := 2; i < 6; i++ {
+	for i := 66; i > 2; i++ {
 		t.Add(i)
 	}
 	t.Delete(2)

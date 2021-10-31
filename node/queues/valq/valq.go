@@ -62,7 +62,7 @@ func GenValQ(value int) *ValQueue {
 	}
 }
 
-func (v *ValQueue) InsertLink(id int, value int, link *ValQueue) {
+func (v *ValQueue) InsertLink(id int, link *ValQueue) {
 	cur := v.FirstLink
 	for i := 0; i < id; i++ {
 		cur = cur.Next
@@ -163,9 +163,9 @@ func (v *ValQueue) Subdivide() {
 			}
 		} else {
 			id, _ := v.Parent.InsertVal(median.Val, false)
-			v.Parent.IsLeaf = false
+			v.Parent.IsLeaf = false //тупо
 			v.Count = 1
-			v.Parent.InsertLink(id, median.Val, &ValQueue{
+			v.Parent.InsertLink(id, &ValQueue{
 				FirstVal:  right,
 				FirstLink: rightLink,
 				Parent:    v.Parent,
@@ -223,10 +223,6 @@ func (v *ValQueue) GetMedian() (*ValNode, *ValNode, *ValNode, *LinkNode, *LinkNo
 	}
 }
 
-/*func (v *ValQueue) InsertLink() {
-
-}*/
-
 func (v *ValQueue) InsertVal(value int, isGoingDown bool) (int, *ValQueue) {
 	if v.IsLeaf || !isGoingDown {
 		v.Count++
@@ -273,6 +269,10 @@ func (v *ValQueue) InsertVal(value int, isGoingDown bool) (int, *ValQueue) {
 			return curLink.Link.InsertVal(value, isGoingDown)
 		}
 		curLink = curLink.Next
+		/*if curLink == nil {
+			t := v.GetRoot()
+			fmt.Println(t)
+		}*/
 		return curLink.Link.InsertVal(value, isGoingDown)
 	}
 }
@@ -308,7 +308,6 @@ func (v *ValQueue) Search(value int) (*ValQueue, int) {
 	}
 	return nil, 0
 }
-
 func (v *ValQueue) DeleteLink(id int) {
 	if id == 0 {
 		v.FirstLink = v.FirstLink.Next
@@ -320,7 +319,6 @@ func (v *ValQueue) DeleteLink(id int) {
 		cur.Next = cur.Next.Next
 	}
 }
-
 func (v *ValQueue) DeleteVal(id int) {
 	if id == 0 {
 		v.FirstVal = v.FirstVal.Next
@@ -334,8 +332,7 @@ func (v *ValQueue) DeleteVal(id int) {
 	v.Count--
 }
 
-func (v *ValQueue) DeleteAndBalance(id int) {
-	v.DeleteVal(id)
+func (v *ValQueue) Balance() {
 	if v.IsLeaf {
 		if v.FirstVal != nil {
 			return
@@ -364,57 +361,69 @@ func (v *ValQueue) DeleteAndBalance(id int) {
 			fromParent := v.Parent.Get(selfId - 1)
 			left.InsertVal(fromParent.Val, true)
 			v.Parent.DeleteLink(selfId)
+			v.Parent.Balance()
 			return
 		}
 		if right != nil {
 			fromParent := v.Parent.Get(selfId)
 			right.InsertVal(fromParent.Val, true)
 			v.Parent.DeleteLink(selfId)
+			v.Parent.Balance()
 			return
 		}
 	} else {
-		if v.FirstVal != nil {
-			cur := v.FirstLink
-			for i := 0; i < id; i++ {
-				cur = cur.Next
-			}
-			if cur.Link.Count > 1 {
-				val := cur.Link.GetBiggest()
-				v.InsertVal(val, false)
+		//Фіксим по стандарту, якщо далі,
+		//то лівої дитини крайнє праве а далі
+		//балансуємо в ноль)00)0
+		if v.FirstLink.Next != nil {
+			from, num := v.GetLeftBiggest()
+			v.InsertVal(num, false)
+			from.Balance()
+			return
+		}
+		left, right := v.GetNeighbours()
+		selfId := v.GetSelfLinkId()
+		fromParent := v.Parent.Get(selfId)
+		if right != nil {
+			if right.Count > 1 {
+				smallest := right.GetSmallest()
+				v.InsertVal(fromParent.Val, false)
+				v.InsertLink(1, right.FirstLink.Link)
+				right.FirstLink = right.FirstLink.Next
+				v.Parent.InsertVal(smallest, false)
 				return
-			}
-			cur = cur.Next
-			if cur.Link.Count > 1 {
-				val := cur.Link.GetSmallest()
-				v.InsertVal(val, false)
-				return
-			}
-			value := cur.Link.Get(0)
-			v.InsertVal(value.Val, true)
-			v.DeleteLink(id + 1)
-		} else {
-			selfId := v.GetSelfLinkId()
-			left, right := v.GetNeighbours()
-			if left != nil {
-				if left.Count > 1 {
-					fromParent := v.Parent.Get(selfId - 1)
-					biggest := left.GetBiggest()
-					v.InsertVal(fromParent.Val, false)
-					v.Parent.InsertVal(biggest, false)
-					return
-				}
-			}
-			if right != nil {
-				if right.Count > 1 {
-					fromParent := v.Parent.Get(selfId)
-					smallest := right.GetSmallest()
-					v.InsertVal(fromParent.Val, false)
-					v.Parent.InsertVal(smallest, false)
-					return
-				}
 			}
 		}
+		if left != nil {
+			if left.Count > 1 {
+				smallest := left.GetSmallest()
+				v.InsertVal(fromParent.Val, false)
+				v.InsertLink(1, left.FirstLink.Link)
+				left.FirstLink = left.FirstLink.Next
+				v.Parent.InsertVal(smallest, false)
+				return
+			}
+		}
+		if right != nil {
+			right.InsertVal(fromParent.Val, false)
+			right.InsertLink(0, v.FirstLink.Link)
+		}
 	}
+}
+
+func (v *ValQueue) GetRightest() (*ValQueue, int) {
+	if v.IsLeaf {
+		return v, v.GetBiggest()
+	}
+	cur := v.FirstLink
+	for cur.Next != nil {
+		cur = cur.Next
+	}
+	return cur.Link.GetRightest()
+}
+
+func (v *ValQueue) GetLeftBiggest() (*ValQueue, int) {
+	return v.FirstLink.Link.GetRightest()
 }
 
 func (v *ValQueue) GetSelfLinkId() int {
