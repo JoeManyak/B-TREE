@@ -30,6 +30,7 @@ func (t *Tree) Search(val int) *valq.ValQueue {
 func (t *Tree) Delete(val int) {
 	search, id := t.Val.Search(val)
 	if search != nil {
+		fmt.Println("Deleting :", val)
 		search.DeleteVal(id)
 		search.Balance(id)
 	} else {

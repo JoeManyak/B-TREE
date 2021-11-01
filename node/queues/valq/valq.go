@@ -2,7 +2,7 @@ package valq
 
 import "fmt"
 
-const max = 2
+const max = 10
 
 var Debug = false
 
@@ -38,9 +38,6 @@ func (v *ValQueue) LeftToRight() {
 	if cur != nil {
 		for cur.Next != nil {
 			cur.Link.LeftToRight()
-			if val == nil {
-				fmt.Println("-")
-			}
 			fmt.Println(val.Val)
 			cur = cur.Next
 			val = val.Next
@@ -78,6 +75,7 @@ func (v *ValQueue) InsertLink(id int, link *ValQueue) {
 		}
 		cur.Append(link)
 	}
+	v.ReParent()
 	/*cur := v.FirstLink
 	if v.FirstLink.Link.FirstVal.Val >= value {
 		newNode := LinkNode{
@@ -196,8 +194,6 @@ func (v *ValQueue) Subdivide() {
 			}
 			v.Parent.Subdivide()
 		}
-	} else {
-		//fmt.Println("No need to subdivide, count:", v.Count)
 	}
 }
 
@@ -374,9 +370,6 @@ func (v *ValQueue) Balance(id int) {
 			}
 		}
 		if left != nil {
-			if Debug {
-				println("-")
-			}
 			fromParent := v.Parent.Get(selfId - 1)
 			left.InsertVal(fromParent.Val, true)
 			v.Parent.DeleteLink(selfId)
@@ -397,6 +390,10 @@ func (v *ValQueue) Balance(id int) {
 			cur = cur.Next
 			linkCount++
 		}
+		if v.Count == 0 && linkCount == 1 && v.Parent == nil {
+			v.FirstLink.Link.Parent = nil
+			return
+		}
 		if v.Count > 0 && v.Count+1 == linkCount {
 			return
 		}
@@ -405,26 +402,12 @@ func (v *ValQueue) Balance(id int) {
 		//балансуємо в ноль)00)0
 		if v.FirstLink.Next != nil {
 			from, num := v.GetLeftBiggest(id)
-			if Debug {
-				print("-")
-			}
 			v.InsertVal(num, false)
 			from.Balance(0)
 			return
 		}
 		left, right := v.GetNeighbours()
 		selfId := v.GetSelfLinkId()
-		if right != nil {
-			if right.Count > 1 {
-				fromParent := v.Parent.Get(selfId)
-				smallest := right.GetSmallest()
-				v.InsertVal(fromParent.Val, false)
-				v.InsertLink(1, right.FirstLink.Link)
-				right.FirstLink = right.FirstLink.Next
-				v.Parent.InsertVal(smallest, false)
-				return
-			}
-		}
 		if left != nil {
 			if left.Count > 1 {
 				fromParent := v.Parent.Get(selfId - 1)
@@ -437,26 +420,42 @@ func (v *ValQueue) Balance(id int) {
 				needed := cur.Next
 				cur.Next = nil
 				v.InsertLink(0, needed.Link)
+				v.ReParent()
 				v.Parent.InsertVal(biggest, false)
 				return
 			}
 		}
 		if right != nil {
-			fromParent := v.Parent.Get(selfId)
-			right.InsertVal(fromParent.Val, false)
-			right.InsertLink(0, v.FirstLink.Link)
-			v.Parent.DeleteLink(0)
-			//print("-")
-			v.Parent.Balance(0)
-			return
+			if right.Count > 1 {
+				fromParent := v.Parent.Get(selfId)
+				smallest := right.GetSmallest()
+				v.InsertVal(fromParent.Val, false)
+				v.InsertLink(1, right.FirstLink.Link)
+				v.ReParent()
+				right.FirstLink = right.FirstLink.Next
+				v.Parent.InsertVal(smallest, false)
+				return
+			}
 		}
 		if left != nil {
 			fromParent := v.Parent.Get(selfId - 1)
 			left.InsertVal(fromParent.Val, false)
 			left.InsertLink(left.Count, v.FirstLink.Link) //danger +1
+			left.ReParent()
+			v.Parent.DeleteLink(1)
 			v.Parent.Balance(0)
 			return
 		}
+		if right != nil {
+			fromParent := v.Parent.Get(selfId)
+			right.InsertVal(fromParent.Val, false)
+			right.InsertLink(0, v.FirstLink.Link)
+			right.ReParent()
+			v.Parent.DeleteLink(0)
+			v.Parent.Balance(0)
+			return
+		}
+
 	}
 }
 
@@ -489,7 +488,8 @@ func (v *ValQueue) GetSelfLinkId() int {
 			cur = cur.Next
 		}
 	}
-	return 0
+	panic("not found self")
+	return -1
 }
 
 func (v *ValQueue) Get(id int) *ValNode {
