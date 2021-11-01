@@ -16,7 +16,7 @@ func GetTree(value int) Tree {
 }
 
 func (t *Tree) Add(val int) {
-	fmt.Println("adding", val)
+	fmt.Println("adding:", val)
 	_, link := t.Val.InsertVal(val, true)
 	link.Subdivide()
 	t.Val = t.Val.GetRoot()
@@ -31,8 +31,9 @@ func (t *Tree) Delete(val int) {
 	search, id := t.Val.Search(val)
 	if search != nil {
 		search.DeleteVal(id)
-		search.Balance()
+		search.Balance(id)
 	} else {
 		fmt.Println("Not found :", val)
 	}
+	t.Val = t.Val.GetRoot()
 }
