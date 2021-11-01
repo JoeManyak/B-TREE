@@ -1,10 +1,8 @@
-package valq
+package queues
 
 import "fmt"
 
 const max = 10
-
-var Debug = false
 
 type ValQueue struct {
 	FirstVal  *ValNode
@@ -30,6 +28,21 @@ func (l *LinkNode) Append(link *ValQueue) {
 		Next: l.Next,
 	}
 	l.Next = &newNode
+}
+
+func (v *ValQueue) CountAll(i int) int {
+	cur := v.FirstVal
+	curl := v.FirstLink
+	c := 0
+	for curl != nil {
+		c += curl.Link.CountAll(i)
+		curl = curl.Next
+	}
+	for cur != nil {
+		i++
+		cur = cur.Next
+	}
+	return i + c
 }
 
 func (v *ValQueue) LeftToRight() {
@@ -76,25 +89,6 @@ func (v *ValQueue) InsertLink(id int, link *ValQueue) {
 		cur.Append(link)
 	}
 	v.ReParent()
-	/*cur := v.FirstLink
-	if v.FirstLink.Link.FirstVal.Val >= value {
-		newNode := LinkNode{
-			Link: link,
-			Next: v.FirstLink,
-		}
-		v.FirstLink = &newNode
-		return
-	}
-	for i := 0; i < id; i++ {
-		cur = cur.Next
-	}
-	if cur.Next != nil {
-		if cur.Next.Link.FirstVal.Val >= value {
-			cur.Append(link)
-			return
-		}
-	}
-	cur.Append(link)*/
 }
 
 func (v *ValQueue) GetRoot() *ValQueue {
@@ -145,21 +139,6 @@ func (v *ValQueue) Subdivide() {
 				IsLeaf: false,
 			}
 			v.Count = 1
-			//parenting
-			//parenting
-			//parenting
-			//parenting
-			//parenting
-			//parenting
-			//parenting
-			//cur := v.Parent.FirstLink.Next.Link
-			/*if cur.FirstLink != nil {
-				cur.FirstLink.Link.Parent = cur
-				cur.FirstLink.Next.Link.Parent = cur
-			}*/
-			/*v.Parent.FirstLink.Link.Parent = v.Parent
-			v.Parent.FirstLink.Next.Link.Parent = v.Parent*/
-
 			v.Parent.ReParent()
 			curRepair := v.Parent.FirstLink
 			if !v.IsLeaf {
@@ -168,14 +147,10 @@ func (v *ValQueue) Subdivide() {
 					curRepair = curRepair.Next
 				}
 			}
-			/*if !v.IsLeaf {
-				v.Parent.FirstLink.Link.ReParent()
-				v.Parent.FirstLink.Next.Link.ReParent()
-			}*/
 		} else {
 			id, _ := v.Parent.InsertVal(median.Val, false)
 			v.Parent.IsLeaf = false //тупо
-			v.Count = 1
+			v.Count = max / 2
 			v.Parent.InsertLink(id+1, &ValQueue{
 				FirstVal:  right,
 				FirstLink: rightLink,
@@ -289,7 +264,7 @@ func (v *ValQueue) InsertVal(value int, isGoingDown bool) (int, *ValQueue) {
 	}
 }
 
-//:=:=:=:=:=:=:=:=:=: DELETIONS :=:=:=:=:=:=:=:=:=:\\
+var Comparisons = 0
 
 func (v *ValQueue) Search(value int) (*ValQueue, int) {
 	cur := v.FirstVal
@@ -297,6 +272,7 @@ func (v *ValQueue) Search(value int) (*ValQueue, int) {
 	var i int
 	for i = 0; cur != nil; i++ {
 		if !v.IsLeaf {
+			Comparisons++
 			if value <= cur.Val {
 				val, count := curL.Link.Search(value)
 				if val != nil {
@@ -304,6 +280,7 @@ func (v *ValQueue) Search(value int) (*ValQueue, int) {
 				}
 			}
 		}
+		Comparisons++
 		if cur.Val == value {
 			return v, i
 		}
@@ -397,9 +374,6 @@ func (v *ValQueue) Balance(id int) {
 		if v.Count > 0 && v.Count+1 == linkCount {
 			return
 		}
-		//Фіксим по стандарту, якщо далі,
-		//то лівої дитини крайнє праве а далі
-		//балансуємо в ноль)00)0
 		if v.FirstLink.Next != nil {
 			from, num := v.GetLeftBiggest(id)
 			v.InsertVal(num, false)
@@ -408,6 +382,7 @@ func (v *ValQueue) Balance(id int) {
 		}
 		left, right := v.GetNeighbours()
 		selfId := v.GetSelfLinkId()
+
 		if left != nil {
 			if left.Count > 1 {
 				fromParent := v.Parent.Get(selfId - 1)
@@ -442,7 +417,7 @@ func (v *ValQueue) Balance(id int) {
 			left.InsertVal(fromParent.Val, false)
 			left.InsertLink(left.Count, v.FirstLink.Link) //danger +1
 			left.ReParent()
-			v.Parent.DeleteLink(1)
+			v.Parent.DeleteLink(selfId)
 			v.Parent.Balance(0)
 			return
 		}
@@ -451,7 +426,7 @@ func (v *ValQueue) Balance(id int) {
 			right.InsertVal(fromParent.Val, false)
 			right.InsertLink(0, v.FirstLink.Link)
 			right.ReParent()
-			v.Parent.DeleteLink(0)
+			v.Parent.DeleteLink(selfId)
 			v.Parent.Balance(0)
 			return
 		}
